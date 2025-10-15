@@ -1,0 +1,11 @@
+body {
+  background: radial-gradient(circle at center, #222 0%, #000 100%);
+}
+
+.card {
+  border-radius: 12px;
+}
+
+#grafico {
+  height: 350px;
+}

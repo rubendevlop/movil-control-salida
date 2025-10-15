@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Control de Móviles – Panel</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+  /* === MODO CLARO (blanco con tonos suaves) === */
+  body {
+    background: radial-gradient(circle at center, #ffffff 0%, #f3f4f6 100%);
+    color: #111;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    color: #111;
+  }
+
+  .table-dark td,
+  .table-dark th {
+    color: #111;
+    background: #f8f9fa;
+    border-color: #ddd;
+  }
+
+  .chart-card {
+    padding: 14px;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #ddd;
+  }
+
+  .chart-card canvas {
+    max-height: 420px;
+  }
+
+  .brand-blue { background: #0d6efd; color: #fff; }
+  .brand-red { background: #dc3545; color: #fff; }
+
+  .nav-tabs .nav-link {
+    color: #444;
+    border-color: transparent;
+  }
+
+  .nav-tabs .nav-link.active {
+    color: #fff;
+    background: #0d6efd;
+    border-color: #0d6efd;
+  }
+
+  /* Opcional: tablas, selects y encabezados */
+  table, th, td {
+    color: #111 !important;
+  }
+
+  select, input, button {
+    color: #111 !important;
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+  }
+
+  h1, h2, h3, h4, h5 {
+    color: #111;
+  }
+</style>
+
+</head>
+<body class="bg-white text-dark">
+<div class="container py-4">
+  <h2 class="text-center fw-bold mb-4">📊 Control de Móviles – Salida de Guardia</h2>
+
+  <!-- Carga -->
+  <div class="card p-3 mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label">📂 Cargar Excel (.xlsx) — Hoja: <strong>BBDD Guardia</strong></label>
+        <input type="file" id="fileInput" accept=".xlsx" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">📅 Mes</label>
+        <select id="selMes" class="form-select" disabled>
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">👷 Guardia</label>
+        <select id="selGuardia" class="form-select" disabled>
+          <option value="Todas">Todas</option>
+        </select>
+      </div>
+    </div>
+    <small class="text-secondary d-block mt-2">
+      El sistema ignora filas con <code>SALIDA TARDE</code> vacío o <code>#N/A</code> y considera solo la <strong>Primera salida</strong>.
+    </small>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3" id="tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-resumen" type="button" role="tab">Resumen</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-promedios" type="button" role="tab">Promedio total</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mes" type="button" role="tab">Por mes</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-choferes" type="button" role="tab">Choferes</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-acomp" type="button" role="tab">Acompañantes</button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- RESUMEN -->
+    <div class="tab-pane fade show active" id="tab-resumen" role="tabpanel">
+      <div class="row g-4 align-items-stretch">
+        <div class="col-lg-8">
+          <div class="card chart-card">
+            <canvas id="chResumen"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card p-3 h-100">
+            <h5 class="text-center mb-3">⏱️ Tiempos Promedio</h5>
+            <table class="table table-dark table-bordered text-center">
+              <thead class="table-secondary text-dark">
+                <tr><th>Categoría</th><th>Promedio</th></tr>
+              </thead>
+              <tbody id="tbPromedios"></tbody>
+            </table>
+            <div id="lblTotal" class="text-center text-secondary small"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROMEDIO TOTAL -->
+    <div class="tab-pane fade" id="tab-promedios" role="tabpanel">
+      <div class="card chart-card">
+        <canvas id="chPromedios"></canvas>
+      </div>
+    </div>
+
+    <!-- POR MES -->
+    <div class="tab-pane fade" id="tab-mes" role="tabpanel">
+      <div class="card chart-card">
+        <canvas id="chMeses"></canvas>
+      </div>
+    </div>
+
+    <!-- CHOFERES -->
+    <div class="tab-pane fade" id="tab-choferes" role="tabpanel">
+      <div class="card chart-card">
+        <canvas id="chChoferes"></canvas>
+      </div>
+    </div>
+
+    <!-- ACOMPAÑANTES -->
+    <div class="tab-pane fade" id="tab-acomp" role="tabpanel">
+      <div class="card p-3 mb-3">
+        <label class="form-label">🧑‍🤝‍🧑 Filtrar por acompañante</label>
+        <select id="selAcomp" class="form-select" disabled>
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+      <div class="card chart-card">
+        <canvas id="chAcomp"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script>
+/* =========================
+   utilidades de tiempo
+========================= */
+function toSeconds(hhmmss) {
+  if (hhmmss == null || hhmmss === "" || hhmmss === "#N/A") return null;
+  const str = hhmmss.toString().trim();
+
+  if (!isNaN(str) && str.includes(".")) {
+    const horasDecimal = parseFloat(str) * 24;
+    return horasDecimal * 3600;
+  }
+
+  const partes = str.split(":").map(Number);
+  if (partes.length === 2) {
+    const [m, s] = partes;
+    return m * 60 + s;
+  }
+  if (partes.length === 3) {
+    const [h, m, s] = partes;
+    return h * 3600 + m * 60 + s;
+  }
+  return null;
+}
+
+const fmtHHMMSS = (sec) => {
+  if (!sec && sec !== 0) return "-";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  return [h, m, s].map(v => String(v).padStart(2, "0")).join(":");
+};
+
+/* =========================
+   estado global
+========================= */
+let DATA = [];
+let charts = {};
+const el = (id) => document.getElementById(id);
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+/* =========================
+   carga excel
+========================= */
+el("fileInput").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const wb = XLSX.read(evt.target.result, { type: "binary" });
+    const sheet = wb.Sheets["BBDD Guardia"] || wb.Sheets[wb.SheetNames[0]];
+    if (!sheet) { alert("No se encontró la hoja BBDD Guardia."); return; }
+
+    const raw = XLSX.utils.sheet_to_json(sheet);
+
+    DATA = raw.filter(r => {
+      const ps = (r["Primera Salida"] ?? r["PRIMERA SALIDA"] ?? "").toString().toLowerCase();
+      const isFirst = ps.includes("primera");
+      const st = (r["SALIDA TARDE"] ?? "").toString().trim();
+      const validST = st && st !== "#N/A";
+      return isFirst && validST;
+    }).map(r => {
+      let salida = (r["SALIDA TARDE"] || "").toString().trim();
+      if (/^en\s*horario/i.test(salida)) salida = "En horario";
+      else salida = "Salió Tarde";
+      return {
+        FECHA: r["FECHA"],
+        HORA: r["HORA"],
+        GUARDIA: r["GUARDIA"] ?? "",
+        CHOFER: r["CHOFER"] ?? "",
+        ACOMPAÑANTE: r["ACOMPAÑANTE"] ?? "",
+        ROTACION_CHOFER: r["ROTACION DEL CHOFER"] ?? "",
+        DIF_HS: r["DIFERENCIA DE HS"],
+        MES: r["Mes"],
+        SALIDA_TARDE: salida
+      };
+    });
+
+    const meses = [...new Set(DATA.map(d => d.MES).filter(v => v !== "" && v != null))].sort((a, b) => a - b);
+    el("selMes").innerHTML = `<option value="Todos">Todos</option>` + meses.map(m => `<option value="${m}">${MONTH_NAMES[(+m || 0) - 1] || m}</option>`).join("");
+    el("selMes").disabled = false;
+
+    const guardias = [...new Set(DATA.map(d => d.GUARDIA).filter(v => v !== "" && v != null))].sort();
+    el("selGuardia").innerHTML = `<option value="Todas">Todas</option>` + guardias.map(g => `<option value="${g}">${g}</option>`).join("");
+    el("selGuardia").disabled = false;
+
+    poblarSelectAcomp(); // 🔹 llena el filtro de acompañantes
+    renderAll();
+  };
+  reader.readAsBinaryString(f);
+});
+
+el("selMes").addEventListener("change", renderAll);
+el("selGuardia").addEventListener("change", renderAll);
+
+/* =========================
+   helpers de agrupación
+========================= */
+function datasetFiltrado() {
+  const m = el("selMes").value;
+  const g = el("selGuardia").value;
+  return DATA.filter(d => {
+    const okMes = (m === "Todos") || (String(d.MES) === String(m));
+    const okG = (g === "Todas") || (String(d.GUARDIA) === String(g));
+    return okMes && okG;
+  });
+}
+
+function groupBy(arr, keyFn) {
+  const map = new Map();
+  for (const item of arr) {
+    const k = keyFn(item);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(item);
+  }
+  return map;
+}
+
+function avgSeconds(items) {
+  if (!items.length) return null;
+  const validos = items
+    .map(i => i.DIF_HS ? i.DIF_HS.toString().trim() : "")
+    .filter(v => v !== "" && v !== "#N/A" && v.toLowerCase() !== "na");
+  if (!validos.length) return null;
+  const segundos = validos.map(v => toSeconds(v)).filter(v => v !== null && !isNaN(v));
+  if (!segundos.length) return null;
+  const total = segundos.reduce((a, b) => a + b, 0);
+  return total / segundos.length;
+}
+
+/* =========================
+   renders
+========================= */
+function renderAll() {
+  const rows = datasetFiltrado();
+
+  const byEstado = groupBy(rows, r => r.SALIDA_TARDE);
+  const enHorario = byEstado.get("En horario")?.length || 0;
+  const tarde = byEstado.get("Salió Tarde")?.length || 0;
+  const total = enHorario + tarde;
+  const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+
+  const pEnHor = avgSeconds(byEstado.get("En horario") || []);
+  const pTarde = avgSeconds(byEstado.get("Salió Tarde") || []);
+
+  el("tbPromedios").innerHTML = `
+    <tr><td>En horario (&lt;20 MIN)</td><td>${fmtHHMMSS(pEnHor)}</td></tr>
+    <tr><td>Salió Tarde</td><td>${fmtHHMMSS(pTarde)}</td></tr>`;
+  el("lblTotal").textContent = `Muestras: ${total} (En horario: ${enHorario} • Tarde: ${tarde})`;
+
+  drawBar("chResumen", ["En horario", "Salió Tarde"], [pct(enHorario), pct(tarde)], "% móviles", ["#0d6efd", "#dc3545"], "SALIDA DE MÓVILES", "porcentaje");
+
+  // --- Por mes ---
+  const byMes = groupBy(datasetFiltradoMesIndependiente(), r => r.MES);
+  const meses = [...byMes.keys()].sort((a, b) => a - b);
+  const dataEn = meses.map(m => {
+    const arr = byMes.get(m) || []; const t = arr.length;
+    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
+    return t ? Math.round(en / t * 100) : 0;
+  });
+  const dataTa = meses.map(m => {
+    const arr = byMes.get(m) || []; const t = arr.length;
+    const ta = arr.filter(r => r.SALIDA_TARDE !== "En horario").length;
+    return t ? Math.round(ta / t * 100) : 0;
+  });
+  drawGroupedBars("chMeses", meses.map(m => MONTH_NAMES[(+m || 0) - 1] || m),
+    [
+      { label: "En horario", data: dataEn, bg: "#0d6efd" },
+      { label: "Salió Tarde", data: dataTa, bg: "#dc3545" }
+    ], "porcentaje");
+
+  // --- Choferes ---
+  const byChofer = groupBy(rows, r => r.CHOFER || "(sin chofer)");
+  const choferes = [];
+  for (const [nom, arr] of byChofer.entries()) {
+    const t = arr.length;
+    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
+    const ta = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
+    const pctEn = t ? Math.round((en / t) * 100) : 0;
+    const pctTa = t ? Math.round((ta / t) * 100) : 0;
+    choferes.push({ nom, pctEn, pctTa });
+  }
+  choferes.sort((a, b) => b.pctEn - a.pctEn);
+  drawGroupedBarsChoferes("chChoferes", choferes.map(x => x.nom).slice(0, 15),
+    [
+      { label: "En horario", data: choferes.map(x => x.pctEn).slice(0, 15), bg: "#0d6efd" },
+      { label: "Salió Tarde", data: choferes.map(x => x.pctTa).slice(0, 15), bg: "#dc3545" }
+    ], "porcentaje", "Choferes - En horario vs Salió tarde");
+
+  // --- Acompañantes ---
+  renderAcomp();
+}
+
+/* =========================
+   Filtro de acompañante
+========================= */
+function poblarSelectAcomp() {
+  const acompSet = [...new Set(DATA.map(d => d.ACOMPAÑANTE).filter(v => v && v.trim() !== ""))].sort();
+  const sel = el("selAcomp");
+  sel.innerHTML = `<option value="Todos">Todos</option>` + acompSet.map(a => `<option value="${a}">${a}</option>`).join("");
+  sel.disabled = false;
+}
+
+el("selAcomp").addEventListener("change", renderAcomp);
+
+function renderAcomp() {
+  const selVal = el("selAcomp").value;
+  const rows = datasetFiltrado();
+  const filtrados = selVal === "Todos"
+    ? rows
+    : rows.filter(r => (r.ACOMPAÑANTE || "").trim() === selVal.trim());
+
+  const byA = groupBy(filtrados, r => r.ACOMPAÑANTE || "(sin acompañante)");
+  const acomp = [];
+  for (const [nom, arr] of byA.entries()) {
+    const t = arr.length;
+    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
+    acomp.push({ nom, pctEn: t ? Math.round(en / t * 100) : 0 });
+  }
+  acomp.sort((a, b) => b.pctEn - a.pctEn);
+  drawHorizontalBars(
+    "chAcomp",
+    acomp.map(x => x.nom).slice(0, 15),
+    acomp.map(x => x.pctEn).slice(0, 15),
+    selVal === "Todos" ? "Top acompañantes por % en horario" : `Desempeño de ${selVal} (% en horario)`
+  );
+}
+
+/* =========================
+   Charts helpers
+========================= */
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function addLabelsPlugin(mode) {
+  return {
+    id: 'labels',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (!meta || !meta.data) return; // 🔹 evita errores si el dataset no existe
+
+        meta.data.forEach((bar, i) => {
+          const val = ds.data[i];
+          if (val == null || isNaN(val)) return; // 🔹 evita valores vacíos o NaN
+
+          const texto = mode === "porcentaje" ? `${val}%` : val;
+          const pos = bar.tooltipPosition();
+
+          ctx.save();
+          ctx.fillStyle = "#111";
+          ctx.font = "bold 13px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(texto, pos.x, pos.y - 6);
+          ctx.restore();
+        });
+      });
+    }
+  };
+}
+
+
+
+/* =========================
+   Funciones drawChart
+========================= */
+function drawBar(id, labels, data, yLabel, colors, title, mode) {
+  destroyChart(id);
+  const ctx = el(id).getContext("2d");
+  charts[id] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, color: "#111", font: { size: 18, weight: "bold" } },
+        tooltip: { callbacks: { label: (c) => mode === "porcentaje" ? `${c.parsed.y}%` : c.parsed.y } }
+      },
+      scales: {
+        x: { ticks: { color: "#333" }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: "#333", callback: v => mode === "porcentaje" ? v + "%" : v }, grid: { color: "rgba(0,0,0,.08)" } }
+      }
+    },
+    plugins: [addLabelsPlugin(mode)]
+  });
+}
+
+function drawGroupedBarsChoferes(id, labels, series, mode, title) {
+  destroyChart(id);
+  const ctx = el(id).getContext("2d");
+  charts[id] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: series.map(s => ({ label: s.label, data: s.data, backgroundColor: s.bg })) },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#111" } },
+        title: { display: true, text: title, color: "#111", font: { size: 18, weight: "bold" } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y}%` } }
+      },
+      scales: {
+        x: { ticks: { color: "#333" }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: "#333", callback: v => v + "%" }, grid: { color: "rgba(0,0,0,0.08)" } }
+      }
+    },
+    plugins: [addLabelsPlugin(mode)]
+  });
+}
+
+function drawGroupedBars(id, labels, series, mode) {
+  destroyChart(id);
+  const ctx = el(id).getContext("2d");
+  charts[id] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: series.map(s => ({ label: s.label, data: s.data, backgroundColor: s.bg })) },
+    options: {
+      plugins: {
+        legend: { labels: { color: "#111" } },
+        title: { display: true, text: "Evolución mensual (%)", color: "#111", font: { size: 18, weight: "bold" } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y}%` } }
+      },
+      scales: {
+        x: { ticks: { color: "#333" }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: "#333", callback: v => v + "%" }, grid: { color: "rgba(0,0,0,0.08)" } }
+      }
+    },
+    plugins: [addLabelsPlugin(mode)]
+  });
+}
+
+function drawHorizontalBars(id, labels, data, title) {
+  destroyChart(id);
+  const ctx = el(id).getContext("2d");
+  charts[id] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ label: "% en horario", data, backgroundColor: "#0d6efd" }] },
+    options: {
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, color: "#111", font: { size: 18, weight: "bold" } },
+        tooltip: { callbacks: { label: c => `${c.parsed.x}%` } }
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: "#333", callback: v => v + "%" }, grid: { color: "rgba(0,0,0,0.08)" } },
+        y: { ticks: { color: "#333" }, grid: { display: false } }
+      }
+    },
+    plugins: [addLabelsPlugin("porcentaje")]
+  });
+}
+</script>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
