@@ -104,9 +104,7 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-resumen" type="button" role="tab">Resumen</button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-promedios" type="button" role="tab">Promedio total</button>
-    </li>
+    
     <li class="nav-item" role="presentation">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mes" type="button" role="tab">Por mes</button>
     </li>
@@ -143,12 +141,6 @@
       </div>
     </div>
 
-    <!-- PROMEDIO TOTAL -->
-    <div class="tab-pane fade" id="tab-promedios" role="tabpanel">
-      <div class="card chart-card">
-        <canvas id="chPromedios"></canvas>
-      </div>
-    </div>
 
     <!-- POR MES -->
     <div class="tab-pane fade" id="tab-mes" role="tabpanel">
@@ -189,7 +181,7 @@
 
 <script>
 /* =========================
-   utilidades de tiempo
+   UTILIDADES DE TIEMPO
 ========================= */
 function toSeconds(hhmmss) {
   if (hhmmss == null || hhmmss === "" || hhmmss === "#N/A") return null;
@@ -221,7 +213,7 @@ const fmtHHMMSS = (sec) => {
 };
 
 /* =========================
-   estado global
+   ESTADO GLOBAL
 ========================= */
 let DATA = [];
 let charts = {};
@@ -229,7 +221,7 @@ const el = (id) => document.getElementById(id);
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 /* =========================
-   carga excel
+   CARGA EXCEL PRINCIPAL
 ========================= */
 el("fileInput").addEventListener("change", (e) => {
   const f = e.target.files[0];
@@ -265,6 +257,7 @@ el("fileInput").addEventListener("change", (e) => {
       };
     });
 
+    // Poblar selects principales
     const meses = [...new Set(DATA.map(d => d.MES).filter(v => v !== "" && v != null))].sort((a, b) => a - b);
     el("selMes").innerHTML = `<option value="Todos">Todos</option>` + meses.map(m => `<option value="${m}">${MONTH_NAMES[(+m || 0) - 1] || m}</option>`).join("");
     el("selMes").disabled = false;
@@ -273,8 +266,8 @@ el("fileInput").addEventListener("change", (e) => {
     el("selGuardia").innerHTML = `<option value="Todas">Todas</option>` + guardias.map(g => `<option value="${g}">${g}</option>`).join("");
     el("selGuardia").disabled = false;
 
-    poblarSelectAcomp(); // 🔹 llena el filtro de acompañantes
-    renderAll();
+    renderAll();                // 🔹 Render principal
+    initAcompananteDashboard(); // 🔹 Dashboard independiente de acompañantes
   };
   reader.readAsBinaryString(f);
 });
@@ -283,7 +276,7 @@ el("selMes").addEventListener("change", renderAll);
 el("selGuardia").addEventListener("change", renderAll);
 
 /* =========================
-   helpers de agrupación
+   HELPERS
 ========================= */
 function datasetFiltrado() {
   const m = el("selMes").value;
@@ -307,8 +300,7 @@ function groupBy(arr, keyFn) {
 
 function avgSeconds(items) {
   if (!items.length) return null;
-  const validos = items
-    .map(i => i.DIF_HS ? i.DIF_HS.toString().trim() : "")
+  const validos = items.map(i => i.DIF_HS ? i.DIF_HS.toString().trim() : "")
     .filter(v => v !== "" && v !== "#N/A" && v.toLowerCase() !== "na");
   if (!validos.length) return null;
   const segundos = validos.map(v => toSeconds(v)).filter(v => v !== null && !isNaN(v));
@@ -318,7 +310,7 @@ function avgSeconds(items) {
 }
 
 /* =========================
-   renders
+   RENDER PRINCIPAL (sin acompañantes)
 ========================= */
 function renderAll() {
   const rows = datasetFiltrado();
@@ -329,15 +321,29 @@ function renderAll() {
   const total = enHorario + tarde;
   const pct = (n) => total ? Math.round((n / total) * 100) : 0;
 
+  // Promedios
   const pEnHor = avgSeconds(byEstado.get("En horario") || []);
   const pTarde = avgSeconds(byEstado.get("Salió Tarde") || []);
+  const pTotal = avgSeconds(rows); // ✅ promedio total sobre todas las muestras filtradas
 
+  // Tabla de promedios
   el("tbPromedios").innerHTML = `
+    <tr><td>Promedio total (todos)</td><td>${fmtHHMMSS(pTotal)}</td></tr>
     <tr><td>En horario (&lt;20 MIN)</td><td>${fmtHHMMSS(pEnHor)}</td></tr>
-    <tr><td>Salió Tarde</td><td>${fmtHHMMSS(pTarde)}</td></tr>`;
+    <tr><td>Salió Tarde</td><td>${fmtHHMMSS(pTarde)}</td></tr>
+  `;
   el("lblTotal").textContent = `Muestras: ${total} (En horario: ${enHorario} • Tarde: ${tarde})`;
 
-  drawBar("chResumen", ["En horario", "Salió Tarde"], [pct(enHorario), pct(tarde)], "% móviles", ["#0d6efd", "#dc3545"], "SALIDA DE MÓVILES", "porcentaje");
+  // Gráfico resumen
+  drawBar(
+    "chResumen",
+    ["En horario", "Salió Tarde"],
+    [pct(enHorario), pct(tarde)],
+    "% móviles",
+    ["#0d6efd", "#dc3545"],
+    "SALIDA DE MÓVILES",
+    "porcentaje"
+  );
 
   // --- Por mes ---
   const byMes = groupBy(datasetFiltradoMesIndependiente(), r => r.MES);
@@ -352,13 +358,17 @@ function renderAll() {
     const ta = arr.filter(r => r.SALIDA_TARDE !== "En horario").length;
     return t ? Math.round(ta / t * 100) : 0;
   });
-  drawGroupedBars("chMeses", meses.map(m => MONTH_NAMES[(+m || 0) - 1] || m),
+  drawGroupedBars(
+    "chMeses",
+    meses.map(m => MONTH_NAMES[(+m || 0) - 1] || m),
     [
       { label: "En horario", data: dataEn, bg: "#0d6efd" },
       { label: "Salió Tarde", data: dataTa, bg: "#dc3545" }
-    ], "porcentaje");
+    ],
+    "porcentaje"
+  );
 
-  // --- Choferes ---
+  // --- Choferes (comparativo) ---
   const byChofer = groupBy(rows, r => r.CHOFER || "(sin chofer)");
   const choferes = [];
   for (const [nom, arr] of byChofer.entries()) {
@@ -370,36 +380,41 @@ function renderAll() {
     choferes.push({ nom, pctEn, pctTa });
   }
   choferes.sort((a, b) => b.pctEn - a.pctEn);
-  drawGroupedBarsChoferes("chChoferes", choferes.map(x => x.nom).slice(0, 15),
+  drawGroupedBarsChoferes(
+    "chChoferes",
+    choferes.map(x => x.nom).slice(0, 15),
     [
       { label: "En horario", data: choferes.map(x => x.pctEn).slice(0, 15), bg: "#0d6efd" },
       { label: "Salió Tarde", data: choferes.map(x => x.pctTa).slice(0, 15), bg: "#dc3545" }
-    ], "porcentaje", "Choferes - En horario vs Salió tarde");
+    ],
+    "porcentaje",
+    "Choferes - En horario vs Salió tarde"
+  );
+}
 
-  // --- Acompañantes ---
-  renderAcomp();
+
+function datasetFiltradoMesIndependiente() {
+  const g = el("selGuardia").value;
+  return DATA.filter(d => (g === "Todas") || (String(d.GUARDIA) === String(g)));
 }
 
 /* =========================
-   Filtro de acompañante
+   DASHBOARD APARTE: ACOMPAÑANTES
 ========================= */
-function poblarSelectAcomp() {
+function initAcompananteDashboard() {
+  if (!DATA.length) return;
   const acompSet = [...new Set(DATA.map(d => d.ACOMPAÑANTE).filter(v => v && v.trim() !== ""))].sort();
   const sel = el("selAcomp");
   sel.innerHTML = `<option value="Todos">Todos</option>` + acompSet.map(a => `<option value="${a}">${a}</option>`).join("");
   sel.disabled = false;
+
+  sel.addEventListener("change", () => renderAcomp(sel.value));
+  renderAcomp("Todos");
 }
 
-el("selAcomp").addEventListener("change", renderAcomp);
-
-function renderAcomp() {
-  const selVal = el("selAcomp").value;
-  const rows = datasetFiltrado();
-  const filtrados = selVal === "Todos"
-    ? rows
-    : rows.filter(r => (r.ACOMPAÑANTE || "").trim() === selVal.trim());
-
-  const byA = groupBy(filtrados, r => r.ACOMPAÑANTE || "(sin acompañante)");
+function renderAcomp(filtro = "Todos") {
+  const rows = filtro === "Todos" ? DATA : DATA.filter(r => (r.ACOMPAÑANTE || "").trim() === filtro.trim());
+  const byA = groupBy(rows, r => r.ACOMPAÑANTE || "(sin acompañante)");
   const acomp = [];
   for (const [nom, arr] of byA.entries()) {
     const t = arr.length;
@@ -407,16 +422,15 @@ function renderAcomp() {
     acomp.push({ nom, pctEn: t ? Math.round(en / t * 100) : 0 });
   }
   acomp.sort((a, b) => b.pctEn - a.pctEn);
-  drawHorizontalBars(
-    "chAcomp",
+  drawHorizontalBars("chAcomp",
     acomp.map(x => x.nom).slice(0, 15),
     acomp.map(x => x.pctEn).slice(0, 15),
-    selVal === "Todos" ? "Top acompañantes por % en horario" : `Desempeño de ${selVal} (% en horario)`
+    filtro === "Todos" ? "Top acompañantes por % en horario" : `Desempeño de ${filtro} (% en horario)`
   );
 }
 
 /* =========================
-   Charts helpers
+   CHART HELPERS Y FUNCIONES DRAW
 ========================= */
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
@@ -427,15 +441,12 @@ function addLabelsPlugin(mode) {
       const ctx = chart.ctx;
       chart.data.datasets.forEach((ds, di) => {
         const meta = chart.getDatasetMeta(di);
-        if (!meta || !meta.data) return; // 🔹 evita errores si el dataset no existe
-
+        if (!meta || !meta.data) return;
         meta.data.forEach((bar, i) => {
           const val = ds.data[i];
-          if (val == null || isNaN(val)) return; // 🔹 evita valores vacíos o NaN
-
+          if (val == null || isNaN(val)) return;
           const texto = mode === "porcentaje" ? `${val}%` : val;
           const pos = bar.tooltipPosition();
-
           ctx.save();
           ctx.fillStyle = "#111";
           ctx.font = "bold 13px system-ui";
@@ -449,11 +460,6 @@ function addLabelsPlugin(mode) {
   };
 }
 
-
-
-/* =========================
-   Funciones drawChart
-========================= */
 function drawBar(id, labels, data, yLabel, colors, title, mode) {
   destroyChart(id);
   const ctx = el(id).getContext("2d");
@@ -540,6 +546,7 @@ function drawHorizontalBars(id, labels, data, title) {
   });
 }
 </script>
+
 
 
 
