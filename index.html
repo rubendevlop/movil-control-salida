@@ -7,6 +7,9 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
+  .guardia{
+    display: none;
+  }
 
   /* === MODO CLARO (blanco con tonos suaves) === */
   body {
@@ -104,6 +107,51 @@
 
 </head>
 <body class="bg-white text-dark">
+
+<!-- ✅ NAVBAR GLOBAL -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+  <div class="container-fluid">
+    <!-- 🔹 Marca / Título -->
+    <a class="navbar-brand fw-bold" href="#">🚐 Control de Móviles</a>
+
+    <!-- 🔹 Botón hamburguesa (móvil) -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- 🔹 Enlaces -->
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link active" href="index.html">
+            <i class="bi bi-grid-fill me-1"></i> Resumen
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="choferes.html">
+            <i class="bi bi-person-vcard me-1"></i> Choferes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="oficial.html">
+            <i class="bi bi-people-fill me-1"></i> Oficiales
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="comparacion-acomp.html">
+            <i class="bi bi-bar-chart-line me-1"></i> Comparaciones
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- 🔹 Fin del navbar -->
+
+
+
+
+
 <div class="container py-4">
   <h2 class="text-center fw-bold mb-4">📊 Control de Móviles – Salida de Guardia</h2>
 
@@ -120,7 +168,7 @@
           <option value="Todos">Todos</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 guardia">
         <label class="form-label">👷 Guardia</label>
         <select id="selGuardia" class="form-select" disabled>
           <option value="Todas">Todas</option>
@@ -141,12 +189,7 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mes" type="button" role="tab">Por mes</button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-choferes" type="button" role="tab">Choferes</button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-acomp" type="button" role="tab">Acompañantes</button>
-    </li>
+
   </ul>
 
   <div class="tab-content">
@@ -183,30 +226,41 @@
   </div>
 
 
-  <!-- CHOFERES -->
-  <div class="tab-pane fade" id="tab-choferes" role="tabpanel">
-    <!-- 🔹 Filtro de chofer individual -->
-    <div class="mt-3">
-      <label for="selChofer" class="form-label fw-semibold">Filtrar por chofer:</label>
-      <select id="selChofer" class="form-select mb-3" disabled>
+ <!-- CHOFERES -->
+<div class="tab-pane fade" id="tab-choferes" role="tabpanel">
+
+  <!-- 🔹 Filtros independientes -->
+  <div class="row g-3 mt-3 mb-3">
+    <div class="col-md-6">
+      <label for="selMesChofer" class="form-label fw-semibold">📅 Mes (Choferes)</label>
+      <select id="selMesChofer" class="form-select" disabled>
         <option value="Todos">Todos</option>
       </select>
     </div>
-
-    <!-- 🔹 Contenedor con scroll (para TODOS) -->
-    <div id="contenedorChoferScroll" class="card chart-card chart-scroll-x">
-      <canvas id="chChoferScroll" height="480"></canvas>
-    </div>
-
-    <!-- 🔹 Contenedor centrado (para UNO) -->
-    <div id="contenedorChoferSimple" class="card chart-card d-none text-center">
-      <canvas id="chChoferSimple" height="420" style="width:600px; max-width:90%;"></canvas>
+    <div class="col-md-6">
+      <label for="selChofer" class="form-label fw-semibold">👷 Filtrar por chofer:</label>
+      <select id="selChofer" class="form-select" disabled>
+        <option value="Todos">Todos</option>
+      </select>
     </div>
   </div>
 
+  <!-- 🔹 Contenedor con scroll (para TODOS) -->
+  <div id="contenedorChoferScroll" class="card chart-card chart-scroll-x">
+    <canvas id="chChoferScroll" height="480"></canvas>
+  </div>
+
+  <!-- 🔹 Contenedor centrado (para UNO) -->
+  <div id="contenedorChoferSimple" class="card chart-card d-none text-center">
+    <canvas id="chChoferSimple" height="420" style="width:600px; max-width:90%;"></canvas>
+  </div>
+
+</div>
+
+
 
   <!-- ACOMPAÑANTES -->
-<div class="tab-pane fade" id="tab-acomp" role="tabpanel">
+<div class="tab-pane fade display:none" id="tab-acomp" role="tabpanel">
 
   <!-- 🔹 Filtro de acompañante -->
   <div class="mt-3">
@@ -332,9 +386,17 @@ el("fileInput").addEventListener("change", (e) => {
     el("selGuardia").innerHTML = `<option value="Todas">Todas</option>` + guardias.map(g => `<option value="${g}">${g}</option>`).join("");
     el("selGuardia").disabled = false;
 
+    // 🔹 Poblar select de mes para Choferes
+    const opcionesMesChofer = `<option value="Todos">Todos</option>` +
+  [...new Set(DATA.map(d => d.MES).filter(v => v !== "" && v != null))]
+  .sort((a, b) => a - b)
+  .map(m => `<option value="${m}">${MONTH_NAMES[(+m || 0) - 1] || m}</option>`)
+  .join("");
+
+
+
+
     renderAll();                // 🔹 Render principal
-    initAcompananteDashboard(); // 🔹 Dashboard independiente de acompañantes
-    initChoferDashboard();      // 🔹 Dashboard independiente de choferes
 
   };
   reader.readAsBinaryString(f);
@@ -475,7 +537,7 @@ function renderChofer(filtro = "Todos") {
   destroyChart("chChoferScroll");
   destroyChart("chChoferSimple");
 
-  // 🔹 Mostramos el que corresponde según el filtro
+  // 🔹 Mostrar el contenedor correcto según el filtro
   if (filtro === "Todos") {
     contScroll.classList.remove("d-none");
     contSimple.classList.add("d-none");
@@ -484,29 +546,53 @@ function renderChofer(filtro = "Todos") {
     contSimple.classList.remove("d-none");
   }
 
-  const rows = filtro === "Todos"
-    ? DATA
-    : DATA.filter(r => (r.CHOFER || "").trim().toLowerCase() === filtroNormalizado);
+  // ==========================
+  //   FILTRO POR MES
+  // ==========================
+  const mesSeleccionado = el("selMesChofer") ? el("selMesChofer").value : "Todos";
 
+  const base = DATA.filter(d => {
+    if (mesSeleccionado === "Todos") return true;
+    const mesNum = String(d.MES);
+    const mesNombre = MONTH_NAMES[(+mesNum || 0) - 1];
+    return (
+      mesNum === mesSeleccionado ||
+      mesNombre === mesSeleccionado
+    );
+  });
+
+  // ==========================
+  //   FILTRO POR CHOFER
+  // ==========================
+  const rows = filtro === "Todos"
+    ? base
+    : base.filter(r => (r.CHOFER || "").trim().toLowerCase() === filtroNormalizado);
+
+  // ==========================
+  //   AGRUPAR Y CALCULAR %
+  // ==========================
   const byC = groupBy(rows, r => r.CHOFER || "(sin chofer)");
   const choferes = [];
 
   for (const [nom, arr] of byC.entries()) {
-    const t = arr.length;
-    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
-    const ta = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
-    const pctEn = t ? Math.round((en / t) * 100) : 0;
-    const pctTa = t ? Math.round((ta / t) * 100) : 0;
+    const total = arr.length;
+    const enHorario = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
+    const tarde = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
+    const pctEn = total ? Math.round((enHorario / total) * 100) : 0;
+    const pctTa = total ? Math.round((tarde / total) * 100) : 0;
     choferes.push({ nom, pctEn, pctTa });
   }
 
+  // Ordenar de mayor a menor % en horario
   choferes.sort((a, b) => b.pctEn - a.pctEn);
 
   const labels = choferes.map(x => x.nom);
   const datasetEn = choferes.map(x => x.pctEn);
   const datasetTa = choferes.map(x => x.pctTa);
 
-  // ✅ Elegimos qué canvas usar
+  // ==========================
+  //   CONFIGURAR GRÁFICO
+  // ==========================
   const canvas = filtro === "Todos" ? canvasScroll : canvasSimple;
   const ctx = canvas.getContext("2d");
 
@@ -538,10 +624,14 @@ function renderChofer(filtro = "Todos") {
       responsive: false,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#111" } },
+        legend: {
+          labels: { color: "#111" }
+        },
         title: {
           display: true,
-          text: "Choferes - En horario vs Salió tarde",
+          text: filtro === "Todos"
+            ? "Choferes - En horario vs Salió tarde"
+            : `Desempeño de ${filtro}`,
           color: "#111",
           font: { size: 18, weight: "bold" }
         }
@@ -578,6 +668,8 @@ function initAcompananteDashboard() {
   sel.addEventListener("change", () => renderAcomp(sel.value));
   renderAcomp("Todos");
 }
+
+
 
 function renderAcomp(filtro = "Todos") {
   const filtroNormalizado = filtro.trim().toLowerCase();

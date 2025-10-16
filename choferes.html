@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Choferes – Control de Móviles</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+  background: radial-gradient(circle at center, #ffffff 0%, #f3f4f6 100%);
+  color: #111;
+}
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  color: #111;
+  
+}
+.chart-scroll-x {
+  width: 100%;
+  height: 600px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  border-radius: 10px;
+}
+.chart-scroll-x canvas {
+  display: block;
+  min-width: 1200px;
+  width: 100%;
+  height: 500px;
+}
+</style>
+</head>
+
+<body class="bg-white text-dark">
+
+<!-- ✅ NAVBAR GLOBAL -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+  <div class="container-fluid">
+    <!-- 🔹 Marca / Título -->
+    <a class="navbar-brand fw-bold" href="#">🚐 Control de Móviles</a>
+
+    <!-- 🔹 Botón hamburguesa (móvil) -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- 🔹 Enlaces -->
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="index.html">
+            <i class="bi bi-grid-fill me-1"></i> Resumen
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link  active" href="choferes.html">
+            <i class="bi bi-person-vcard me-1"></i> Choferes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="oficial.html">
+            <i class="bi bi-people-fill me-1"></i> Oficiales
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="comparacion-acomp.html">
+            <i class="bi bi-bar-chart-line me-1"></i> Comparaciones
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- 🔹 Fin del navbar -->
+
+
+
+
+
+<div class="container py-4">
+  <h2 class="text-center fw-bold mb-4">📊 Control de Móviles – Choferes</h2>
+
+  <!-- Carga -->
+  <div class="card p-3 mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label">📂 Cargar Excel (.xlsx) — Hoja: <strong>BBDD Guardia</strong></label>
+        <input type="file" id="fileInput" accept=".xlsx" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">📅 Mes</label>
+        <select id="selMesChofer" class="form-select" disabled>
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">👷 Chofer</label>
+        <select id="selChofer" class="form-select" disabled>
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div id="contenedorChoferScroll" class="card chart-scroll-x">
+    <canvas id="chChofer" height="480"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+
+<script>
+let DATA = [];
+let chart;
+const el = (id) => document.getElementById(id);
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+el("fileInput").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const wb = XLSX.read(evt.target.result, { type: "binary" });
+    const sheet = wb.Sheets["BBDD Guardia"] || wb.Sheets[wb.SheetNames[0]];
+    if (!sheet) { alert("No se encontró la hoja BBDD Guardia."); return; }
+    const raw = XLSX.utils.sheet_to_json(sheet);
+
+DATA = raw.map(r => {
+  // normaliza SALIDA TARDE
+  const stRaw = (r["SALIDA TARDE"] ?? "").toString().trim();
+  const salida =
+    /^en\s*horario/i.test(stRaw) ? "En horario" :
+    (stRaw === "" || /#N\/A|^\s*na\s*$/i.test(stRaw)) ? null : "Salió Tarde";
+
+  return {
+    CHOFER: r["CHOFER"] ?? "",
+    MES: r["Mes"],
+    SALIDA_TARDE: salida
+  };
+}).filter(r => r.CHOFER && r.SALIDA_TARDE); // descarta vacíos/NA
+
+
+    // Poblar selects
+    const meses = [...new Set(DATA.map(d => d.MES).filter(v => v))].sort((a,b)=>a-b);
+    el("selMesChofer").innerHTML = `<option value="Todos">Todos</option>` +
+      meses.map(m => `<option value="${m}">${MONTH_NAMES[(+m)-1]}</option>`).join("");
+    el("selMesChofer").disabled = false;
+
+    const choferes = [...new Set(DATA.map(d => d.CHOFER))].sort();
+    el("selChofer").innerHTML = `<option value="Todos">Todos</option>` +
+      choferes.map(c => `<option value="${c}">${c}</option>`).join("");
+    el("selChofer").disabled = false;
+
+    renderChofer();
+  };
+  reader.readAsBinaryString(f);
+});
+
+el("selMesChofer").addEventListener("change", renderChofer);
+el("selChofer").addEventListener("change", renderChofer);
+
+function renderChofer() {
+  if (!DATA.length) return;
+
+  const mes = el("selMesChofer").value;           // "Todos" o "1..12"
+  const choferSel = el("selChofer").value.trim().toLowerCase();
+
+  // filtro base por mes y chofer (si corresponde)
+  const base = DATA.filter(d => {
+    const okMes = (mes === "Todos") || (String(d.MES) === String(mes));
+    const okCh  = (choferSel === "todos") || ((d.CHOFER || "").trim().toLowerCase() === choferSel);
+    return okMes && okCh;
+  });
+
+  // agrupar por chofer y calcular porcentajes
+  const grupos = new Map();
+  for (const d of base) {
+    const k = d.CHOFER || "(sin chofer)";
+    if (!grupos.has(k)) grupos.set(k, { total: 0, en: 0, tarde: 0 });
+    const g = grupos.get(k);
+    g.total++;
+    if (d.SALIDA_TARDE === "En horario") g.en++; else g.tarde++;
+  }
+
+  const labels = [];
+  const pctEn  = [];
+  const pctTa  = [];
+
+  for (const [nom, g] of grupos.entries()) {
+    labels.push(nom);
+    const enP = g.total ? Math.round((g.en    / g.total) * 100) : 0;
+    const taP = g.total ? Math.round((g.tarde / g.total) * 100) : 0;
+    pctEn.push(enP);
+    pctTa.push(taP);
+  }
+
+  // limpiar / recrear canvas para evitar glitches
+  // 🧹 Limpiar el canvas antes de renderizar
+if (chart) {
+  chart.destroy();
+  const cont = el("chChofer").parentNode;
+  cont.innerHTML = '<canvas id="chChofer" height="600"></canvas>';
+}
+
+// 📏 Ajustar ancho dinámico según cantidad de choferes
+const canvas = el("chChofer");
+const anchoPorChofer = 40; // 🔹 más grande = más espacio horizontal entre choferes
+canvas.width = Math.max(1200, labels.length * anchoPorChofer);
+
+const ctx = el("chChofer").getContext("2d");
+
+chart = new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [
+      {
+        label: "En horario",
+        data: pctEn,
+        backgroundColor: "#0d6efd",
+        borderRadius: 2,
+        barThickness: 12,         // 🔹 grosor fijo (como acompañantes)
+        categoryPercentage: 0.8,  // 🔹 espacio entre grupos
+        barPercentage: 0.5        // 🔹 espacio dentro del grupo
+      },
+      {
+        label: "Salió Tarde",
+        data: pctTa,
+        backgroundColor: "#dc3545",
+        borderRadius: 2,
+        barThickness: 12,
+        categoryPercentage: 0.8,
+        barPercentage: 0.5
+      }
+    ]
+  },
+  options: {
+    responsive: false,
+    maintainAspectRatio: false,
+    plugins: {
+      title: {
+        display: true,
+        text: "Choferes - En horario vs Salió tarde (porcentaje)",
+        font: { size: 18, weight: "bold" },
+        color: "#111"
+      },
+      legend: {
+        position: "top",
+        labels: { color: "#111", font: { size: 12 } }
+      },
+      datalabels: {
+        color: "#111",
+        font: { weight: "bold", size: 10 },
+        anchor: "end",
+        align: "end",
+        offset: 2,
+        formatter: v => (v > 0 ? `${v}%` : "")
+      }
+    },
+    scales: {
+      x: {
+        stacked: false, // 🔹 barras una al lado de otra
+        ticks: {
+          color: "#333",
+          font: { size: 9 },
+          autoSkip: false,
+          maxRotation: 35,
+          minRotation: 35,
+          padding: 12
+        },
+        grid: { display: false }
+      },
+      y: {
+        stacked: false,
+        beginAtZero: true,
+        max: 100,
+        ticks: {
+          color: "#333",
+          callback: v => `${v}%`,
+          stepSize: 10
+        },
+        grid: { color: "rgba(0,0,0,0.08)" }
+      }
+    }
+  },
+  plugins: (typeof ChartDataLabels !== "undefined" ? [ChartDataLabels] : [])
+});
+
+}
+
+
+
+</script>
+</body>
+</html>

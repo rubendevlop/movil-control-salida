@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Comparación de Tiempos – Acompañantes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light text-dark">
+
+<!-- ✅ NAVBAR GLOBAL -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+  <div class="container-fluid">
+    <!-- 🔹 Marca / Título -->
+    <a class="navbar-brand fw-bold" href="#">🚐 Control de Móviles</a>
+
+    <!-- 🔹 Botón hamburguesa (móvil) -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- 🔹 Enlaces -->
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="index.html">
+            <i class="bi bi-grid-fill me-1"></i> Resumen
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="choferes.html">
+            <i class="bi bi-person-vcard me-1"></i> Choferes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="oficial.html">
+            <i class="bi bi-people-fill me-1"></i> Oficiales
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link  active" href="comparacion-acomp.html">
+            <i class="bi bi-bar-chart-line me-1"></i> Comparaciones
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- 🔹 Fin del navbar -->
+
+
+
+
+
+
+
+<div class="container py-4">
+  <h3 class="fw-bold mb-4 text-center">📊 Comparación de Tiempos Promedio entre Acompañantes</h3>
+
+  <!-- CARGA Y FILTROS -->
+  <div class="card p-3 mb-4 shadow-sm">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">📂 Cargar Excel (.xlsx)</label>
+        <input type="file" id="fileInput" accept=".xlsx" class="form-control">
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">📅 Año</label>
+        <select id="selAnio" class="form-select" disabled>
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">📆 Meses (Ctrl/⌘ + clic para varios)</label>
+        <select id="selMes" multiple class="form-select" disabled></select>
+      </div>
+    </div>
+
+    <hr>
+
+    <label class="form-label mt-2">🧑‍🤝‍🧑 Seleccioná acompañantes (Ctrl/⌘ + clic para varios)</label>
+    <select id="selAcomp" multiple class="form-select" disabled></select>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div id="tablaResultados" class="card p-3 shadow-sm"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script>
+let DATA = [];
+const el = (id) => document.getElementById(id);
+const SEC_20_MIN = 20 * 60;
+
+function toSeconds(hora) {
+  if (hora == null || hora === "" || hora === "#N/A") return null;
+  if (!isNaN(hora) && Number(hora) < 2) return Number(hora) * 24 * 3600; // excel serial en días
+  const val = hora.toString().trim();
+  const partes = val.split(":").map(Number);
+  if (partes.length >= 2) {
+    const [h, m, s] = [partes[0] || 0, partes[1] || 0, partes[2] || 0];
+    return h * 3600 + m * 60 + s;
+  }
+  if (!isNaN(val)) return Number(val) * 24 * 3600;
+  return null;
+}
+
+function fmtHHMMSS(sec) {
+  if (sec == null) return "-";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  return [h, m, s].map(v => String(v).padStart(2, "0")).join(":");
+}
+
+// Clasificación robusta por estado, usando columna o regla de 20 min
+function estadoSalida(row) {
+  const st = (row.SALIDA_TARDE || "").toString().trim().toLowerCase();
+  if (st) {
+    if (/^en\s*horario/.test(st)) return "En horario";
+    return "Salió Tarde";
+  }
+  const dif = toSeconds(row.DIF_HS);
+  if (dif == null) return null;
+  return dif <= SEC_20_MIN ? "En horario" : "Salió Tarde";
+}
+
+// ===============================
+// CARGAR EXCEL
+// ===============================
+el("fileInput").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const wb = XLSX.read(evt.target.result, { type: "binary" });
+    const sheet = wb.Sheets["BBDD Guardia"] || wb.Sheets[wb.SheetNames[0]];
+    if (!sheet) return alert("No se encontró la hoja 'BBDD Guardia'.");
+    const raw = XLSX.utils.sheet_to_json(sheet);
+
+    DATA = raw.map(r => {
+      // Normalizo SALIDA TARDE
+      let salidaT = (r["SALIDA TARDE"] ?? "").toString().trim();
+      if (/^en\s*horario/i.test(salidaT)) salidaT = "En horario";
+      else if (salidaT) salidaT = "Salió Tarde"; // cualquier otra cosa => tarde
+
+      return {
+        FECHA: r["FECHA"] ?? "",                  // para contar días
+        ACOMPAÑANTE: r["ACOMPAÑANTE"] ?? "",
+        ENTRADA: r["HORARIO DE ENTRADA"] ?? "",
+        SALIDA: r["PRIMERA SALIDA"] ?? r["Primera Salida"] ?? "",
+        SALIDA_TARDE: salidaT,
+        DIF_HS: r["DIFERENCIA DE HS"] ?? "",
+        MES: r["Mes"] ?? "",
+        ANIO: r["AÑO DE"] ?? r["AÑO"] ?? r["AÑO DE"] ?? "" // por si cambia encabezado
+      };
+    }).filter(r => r.ACOMPAÑANTE && r.SALIDA); // al menos tener salida y acompañante
+
+    // Poblar selects
+    const acompSet = [...new Set(DATA.map(d => d.ACOMPAÑANTE))].sort();
+    el("selAcomp").innerHTML = acompSet.map(a => `<option value="${a}">${a}</option>`).join("");
+    el("selAcomp").disabled = false;
+
+    const anios = [...new Set(DATA.map(d => d.ANIO).filter(v => v !== ""))].sort();
+    el("selAnio").innerHTML = `<option value="Todos">Todos</option>` + anios.map(a => `<option value="${a}">${a}</option>`).join("");
+    el("selAnio").disabled = false;
+
+    const meses = [...new Set(DATA.map(d => d.MES).filter(v => v !== ""))].sort((a,b)=>a-b);
+    const NOMBRES_MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    el("selMes").innerHTML = meses.map(m => `<option value="${m}">${NOMBRES_MESES[(+m || 0) - 1] || m}</option>`).join("");
+    el("selMes").disabled = false;
+
+    renderTabla(); // primera renderización
+  };
+  reader.readAsBinaryString(f);
+});
+
+// ===============================
+// RENDER AUTOMÁTICO
+// ===============================
+["selAnio", "selMes", "selAcomp"].forEach(id => {
+  el(id).addEventListener("change", renderTabla);
+});
+
+// ===============================
+// FUNCIÓN PRINCIPAL
+// ===============================
+function renderTabla() {
+  if (!DATA.length) return;
+
+  const seleccionados = [...el("selAcomp").selectedOptions].map(o => o.value);
+  const anioSel = el("selAnio").value;
+  const mesesSel = [...el("selMes").selectedOptions].map(o => o.value);
+
+  const tabla = el("tablaResultados");
+
+  if (!seleccionados.length || !mesesSel.length) {
+    tabla.innerHTML = `<div class='text-center text-secondary'>Seleccioná acompañantes y meses para mostrar la comparación.</div>`;
+    return;
+  }
+
+  const filtrados = DATA.filter(d => {
+    const okA = seleccionados.includes(d.ACOMPAÑANTE);
+    const okM = mesesSel.includes(String(d.MES));
+    const okY = anioSel === "Todos" || String(d.ANIO) === String(anioSel);
+    return okA && okM && okY;
+  });
+
+  if (!filtrados.length) {
+    tabla.innerHTML = `<div class='text-center text-secondary'>No hay registros para la selección actual.</div>`;
+    return;
+  }
+
+  let html = `
+    <table class="table table-bordered text-center align-middle">
+      <thead class="table-secondary">
+        <tr>
+          <th>Acompañante</th>
+          <th>Promedio total (todos)</th>
+          <th>En horario (&lt;20 MIN)</th>
+          <th>Salió Tarde</th>
+          <th>Días analizados</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  for (const acomp of seleccionados) {
+    const filas = filtrados.filter(r => r.ACOMPAÑANTE === acomp);
+    if (!filas.length) continue;
+
+    // Clasificación robusta por estado
+    const enHora = filas.filter(r => estadoSalida(r) === "En horario");
+    const tarde  = filas.filter(r => estadoSalida(r) === "Salió Tarde");
+
+    const toValidSecs = arr => arr.map(r => toSeconds(r.DIF_HS)).filter(v => v != null && !isNaN(v));
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+
+    const promTotal = avg(toValidSecs(filas));
+    const promEn    = avg(toValidSecs(enHora));
+    const promTa    = avg(toValidSecs(tarde));
+
+    // Días únicos analizados
+    const dias = new Set(filas.map(r => String(r.FECHA))).size;
+
+    html += `
+      <tr>
+        <td class="fw-semibold">${acomp}</td>
+        <td>${fmtHHMMSS(promTotal)}</td>
+        <td>${fmtHHMMSS(promEn)}</td>
+        <td>${fmtHHMMSS(promTa)}</td>
+        <td>${dias}</td>
+      </tr>`;
+  }
+
+  html += `</tbody></table>`;
+  tabla.innerHTML = html;
+}
+</script>
+</body>
+</html>
