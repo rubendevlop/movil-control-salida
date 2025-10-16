@@ -7,6 +7,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
+
   /* === MODO CLARO (blanco con tonos suaves) === */
   body {
     background: radial-gradient(circle at center, #ffffff 0%, #f3f4f6 100%);
@@ -67,6 +68,38 @@
   h1, h2, h3, h4, h5 {
     color: #111;
   }
+
+.chart-scroll-x {
+  width: 100%;
+  overflow-x: auto !important;   /* ✅ scroll horizontal */
+  overflow-y: hidden !important; /* evita scroll vertical */
+  padding-bottom: 8px;
+  border-radius: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f8f9fa;
+}
+
+.chart-scroll-x::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 4px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+.chart-scroll-x canvas {
+  display: block;
+  min-width: 1200px; /* ✅ obliga al scroll a aparecer */
+}
+
+
+
+
 </style>
 
 </head>
@@ -118,65 +151,98 @@
 
   <div class="tab-content">
 
-    <!-- RESUMEN -->
-    <div class="tab-pane fade show active" id="tab-resumen" role="tabpanel">
-      <div class="row g-4 align-items-stretch">
-        <div class="col-lg-8">
-          <div class="card chart-card">
-            <canvas id="chResumen"></canvas>
-          </div>
-        </div>
-        <div class="col-lg-4">
-          <div class="card p-3 h-100">
-            <h5 class="text-center mb-3">⏱️ Tiempos Promedio</h5>
-            <table class="table table-dark table-bordered text-center">
-              <thead class="table-secondary text-dark">
-                <tr><th>Categoría</th><th>Promedio</th></tr>
-              </thead>
-              <tbody id="tbPromedios"></tbody>
-            </table>
-            <div id="lblTotal" class="text-center text-secondary small"></div>
-          </div>
+  <!-- RESUMEN -->
+  <div class="tab-pane fade show active" id="tab-resumen" role="tabpanel">
+    <div class="row g-4 align-items-stretch">
+      <div class="col-lg-8">
+        <div class="card chart-card">
+          <canvas id="chResumen"></canvas>
         </div>
       </div>
-    </div>
-
-
-    <!-- POR MES -->
-    <div class="tab-pane fade" id="tab-mes" role="tabpanel">
-      <div class="card chart-card">
-        <canvas id="chMeses"></canvas>
+      <div class="col-lg-4">
+        <div class="card p-3 h-100">
+          <h5 class="text-center mb-3">⏱️ Tiempos Promedio</h5>
+          <table class="table table-dark table-bordered text-center">
+            <thead class="table-secondary text-dark">
+              <tr><th>Categoría</th><th>Promedio</th></tr>
+            </thead>
+            <tbody id="tbPromedios"></tbody>
+          </table>
+          <div id="lblTotal" class="text-center text-secondary small"></div>
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- CHOFERES -->
-    <div class="tab-pane fade" id="tab-choferes" role="tabpanel">
-      <div class="card chart-card">
-        <canvas id="chChoferes"></canvas>
-      </div>
+
+  <!-- POR MES -->
+  <div class="tab-pane fade" id="tab-mes" role="tabpanel">
+    <div class="card chart-card">
+      <canvas id="chMeses"></canvas>
+    </div>
+  </div>
+
+
+  <!-- CHOFERES -->
+  <div class="tab-pane fade" id="tab-choferes" role="tabpanel">
+    <!-- 🔹 Filtro de chofer individual -->
+    <div class="mt-3">
+      <label for="selChofer" class="form-label fw-semibold">Filtrar por chofer:</label>
+      <select id="selChofer" class="form-select mb-3" disabled>
+        <option value="Todos">Todos</option>
+      </select>
     </div>
 
-    <!-- ACOMPAÑANTES -->
-    <div class="tab-pane fade" id="tab-acomp" role="tabpanel">
-      <div class="card p-3 mb-3">
-        <label class="form-label">🧑‍🤝‍🧑 Filtrar por acompañante</label>
-        <select id="selAcomp" class="form-select" disabled>
-          <option value="Todos">Todos</option>
-        </select>
-      </div>
-      <div class="card chart-card">
-        <canvas id="chAcomp"></canvas>
-      </div>
+    <!-- 🔹 Contenedor con scroll (para TODOS) -->
+    <div id="contenedorChoferScroll" class="card chart-card chart-scroll-x">
+      <canvas id="chChoferScroll" height="480"></canvas>
     </div>
+
+    <!-- 🔹 Contenedor centrado (para UNO) -->
+    <div id="contenedorChoferSimple" class="card chart-card d-none text-center">
+      <canvas id="chChoferSimple" height="420" style="width:600px; max-width:90%;"></canvas>
+    </div>
+  </div>
+
+
+  <!-- ACOMPAÑANTES -->
+<div class="tab-pane fade" id="tab-acomp" role="tabpanel">
+
+  <!-- 🔹 Filtro de acompañante -->
+  <div class="mt-3">
+    <label for="selAcomp" class="form-label fw-semibold">Filtrar por acompañante:</label>
+    <select id="selAcomp" class="form-select mb-3" disabled>
+      <option value="Todos">Todos</option>
+    </select>
+  </div>
+
+  <!-- 🔹 Contenedor con scroll (para TODOS) -->
+  <div id="contenedorAcompScroll" class="card chart-card chart-scroll-x">
+    <canvas id="chAcompScroll" height="480"></canvas>
+  </div>
+
+  <!-- 🔹 Contenedor centrado (para UNO) -->
+  <div id="contenedorAcompSimple" class="card chart-card d-none text-center">
+    <canvas id="chAcompSimple" height="420" style="width:600px; max-width:90%;"></canvas>
+  </div>
+
+</div>
+
+
+</div>
+
 
   </div>
 </div>
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 
 <script>
@@ -268,6 +334,8 @@ el("fileInput").addEventListener("change", (e) => {
 
     renderAll();                // 🔹 Render principal
     initAcompananteDashboard(); // 🔹 Dashboard independiente de acompañantes
+    initChoferDashboard();      // 🔹 Dashboard independiente de choferes
+
   };
   reader.readAsBinaryString(f);
 });
@@ -368,28 +436,7 @@ function renderAll() {
     "porcentaje"
   );
 
-  // --- Choferes (comparativo) ---
-  const byChofer = groupBy(rows, r => r.CHOFER || "(sin chofer)");
-  const choferes = [];
-  for (const [nom, arr] of byChofer.entries()) {
-    const t = arr.length;
-    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
-    const ta = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
-    const pctEn = t ? Math.round((en / t) * 100) : 0;
-    const pctTa = t ? Math.round((ta / t) * 100) : 0;
-    choferes.push({ nom, pctEn, pctTa });
-  }
-  choferes.sort((a, b) => b.pctEn - a.pctEn);
-  drawGroupedBarsChoferes(
-    "chChoferes",
-    choferes.map(x => x.nom).slice(0, 15),
-    [
-      { label: "En horario", data: choferes.map(x => x.pctEn).slice(0, 15), bg: "#0d6efd" },
-      { label: "Salió Tarde", data: choferes.map(x => x.pctTa).slice(0, 15), bg: "#dc3545" }
-    ],
-    "porcentaje",
-    "Choferes - En horario vs Salió tarde"
-  );
+
 }
 
 
@@ -398,9 +445,129 @@ function datasetFiltradoMesIndependiente() {
   return DATA.filter(d => (g === "Todas") || (String(d.GUARDIA) === String(g)));
 }
 
+
+
+/* =========================
+   DASHBOARD APARTE: CHOFERES
+========================= */
+function initChoferDashboard() {
+  if (!DATA.length) return;
+  const choferSet = [...new Set(DATA.map(d => d.CHOFER).filter(v => v && v.trim() !== ""))].sort();
+  const sel = el("selChofer");
+  sel.innerHTML = `<option value="Todos">Todos</option>` + choferSet.map(c => `<option value="${c}">${c}</option>`).join("");
+  sel.disabled = false;
+
+  sel.addEventListener("change", () => renderChofer(sel.value));
+  renderChofer("Todos");
+}
+
+
+function renderChofer(filtro = "Todos") {
+  const filtroNormalizado = filtro.trim().toLowerCase();
+
+  // 🔹 Seleccionamos los dos contenedores
+  const contScroll = el("contenedorChoferScroll");
+  const contSimple = el("contenedorChoferSimple");
+  const canvasScroll = el("chChoferScroll");
+  const canvasSimple = el("chChoferSimple");
+
+  // 🔹 Limpiamos los gráficos anteriores
+  destroyChart("chChoferScroll");
+  destroyChart("chChoferSimple");
+
+  // 🔹 Mostramos el que corresponde según el filtro
+  if (filtro === "Todos") {
+    contScroll.classList.remove("d-none");
+    contSimple.classList.add("d-none");
+  } else {
+    contScroll.classList.add("d-none");
+    contSimple.classList.remove("d-none");
+  }
+
+  const rows = filtro === "Todos"
+    ? DATA
+    : DATA.filter(r => (r.CHOFER || "").trim().toLowerCase() === filtroNormalizado);
+
+  const byC = groupBy(rows, r => r.CHOFER || "(sin chofer)");
+  const choferes = [];
+
+  for (const [nom, arr] of byC.entries()) {
+    const t = arr.length;
+    const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
+    const ta = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
+    const pctEn = t ? Math.round((en / t) * 100) : 0;
+    const pctTa = t ? Math.round((ta / t) * 100) : 0;
+    choferes.push({ nom, pctEn, pctTa });
+  }
+
+  choferes.sort((a, b) => b.pctEn - a.pctEn);
+
+  const labels = choferes.map(x => x.nom);
+  const datasetEn = choferes.map(x => x.pctEn);
+  const datasetTa = choferes.map(x => x.pctTa);
+
+  // ✅ Elegimos qué canvas usar
+  const canvas = filtro === "Todos" ? canvasScroll : canvasSimple;
+  const ctx = canvas.getContext("2d");
+
+  const ancho = filtro === "Todos"
+    ? Math.max(1200, labels.length * 90)
+    : 600;
+  canvas.width = ancho;
+
+  charts[filtro === "Todos" ? "chChoferScroll" : "chChoferSimple"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "En horario",
+          data: datasetEn,
+          backgroundColor: "#0d6efd",
+          barThickness: 30
+        },
+        {
+          label: "Salió Tarde",
+          data: datasetTa,
+          backgroundColor: "#dc3545",
+          barThickness: 30
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#111" } },
+        title: {
+          display: true,
+          text: "Choferes - En horario vs Salió tarde",
+          color: "#111",
+          font: { size: 18, weight: "bold" }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#333", autoSkip: false, maxRotation: 35, minRotation: 35 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: "#333", callback: v => v + "%" },
+          grid: { color: "rgba(0,0,0,0.08)" }
+        }
+      }
+    },
+    plugins: [addLabelsPlugin("porcentaje")]
+  });
+}
+
+
+
 /* =========================
    DASHBOARD APARTE: ACOMPAÑANTES
 ========================= */
+
 function initAcompananteDashboard() {
   if (!DATA.length) return;
   const acompSet = [...new Set(DATA.map(d => d.ACOMPAÑANTE).filter(v => v && v.trim() !== ""))].sort();
@@ -413,21 +580,111 @@ function initAcompananteDashboard() {
 }
 
 function renderAcomp(filtro = "Todos") {
-  const rows = filtro === "Todos" ? DATA : DATA.filter(r => (r.ACOMPAÑANTE || "").trim() === filtro.trim());
+  const filtroNormalizado = filtro.trim().toLowerCase();
+
+  // 🔹 Referencias a los dos contenedores
+  const contScroll = el("contenedorAcompScroll");
+  const contSimple = el("contenedorAcompSimple");
+  const canvasScroll = el("chAcompScroll");
+  const canvasSimple = el("chAcompSimple");
+
+  // 🔹 Limpiar gráficos previos
+  destroyChart("chAcompScroll");
+  destroyChart("chAcompSimple");
+
+  // 🔹 Alternar contenedores según filtro
+  if (filtro === "Todos") {
+    contScroll.classList.remove("d-none");
+    contSimple.classList.add("d-none");
+  } else {
+    contScroll.classList.add("d-none");
+    contSimple.classList.remove("d-none");
+  }
+
+  // 🔹 Filtrar datos
+  const rows = filtro === "Todos"
+    ? DATA
+    : DATA.filter(r => (r.ACOMPAÑANTE || "").trim().toLowerCase() === filtroNormalizado);
+
   const byA = groupBy(rows, r => r.ACOMPAÑANTE || "(sin acompañante)");
   const acomp = [];
+
   for (const [nom, arr] of byA.entries()) {
     const t = arr.length;
     const en = arr.filter(r => r.SALIDA_TARDE === "En horario").length;
-    acomp.push({ nom, pctEn: t ? Math.round(en / t * 100) : 0 });
+    const ta = arr.filter(r => r.SALIDA_TARDE === "Salió Tarde").length;
+    const pctEn = t ? Math.round((en / t) * 100) : 0;
+    const pctTa = t ? Math.round((ta / t) * 100) : 0;
+    acomp.push({ nom, pctEn, pctTa });
   }
+
   acomp.sort((a, b) => b.pctEn - a.pctEn);
-  drawHorizontalBars("chAcomp",
-    acomp.map(x => x.nom).slice(0, 15),
-    acomp.map(x => x.pctEn).slice(0, 15),
-    filtro === "Todos" ? "Top acompañantes por % en horario" : `Desempeño de ${filtro} (% en horario)`
-  );
+
+  const labels = acomp.map(x => x.nom);
+  const datasetEn = acomp.map(x => x.pctEn);
+  const datasetTa = acomp.map(x => x.pctTa);
+
+  // ✅ Determinar cuál canvas usar
+  const canvas = filtro === "Todos" ? canvasScroll : canvasSimple;
+  const ctx = canvas.getContext("2d");
+
+  // 🔹 Ancho dinámico o compacto
+  const ancho = filtro === "Todos"
+    ? Math.max(1200, labels.length * 90)
+    : 600;
+  canvas.width = ancho;
+
+  charts[filtro === "Todos" ? "chAcompScroll" : "chAcompSimple"] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "En horario",
+          data: datasetEn,
+          backgroundColor: "#0d6efd",
+          barThickness: 30
+        },
+        {
+          label: "Salió Tarde",
+          data: datasetTa,
+          backgroundColor: "#dc3545",
+          barThickness: 30
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#111" } },
+        title: {
+          display: true,
+          text: filtro === "Todos"
+            ? "Acompañantes - En horario vs Salió tarde"
+            : `Desempeño de ${filtro} (% en horario vs tarde)`,
+          color: "#111",
+          font: { size: 18, weight: "bold" }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#333", autoSkip: false, maxRotation: 35, minRotation: 35 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: "#333", callback: v => v + "%" },
+          grid: { color: "rgba(0,0,0,0.08)" }
+        }
+      }
+    },
+    plugins: [addLabelsPlugin("porcentaje")]
+  });
 }
+
+
+
 
 /* =========================
    CHART HELPERS Y FUNCIONES DRAW
@@ -488,7 +745,8 @@ function drawGroupedBarsChoferes(id, labels, series, mode, title) {
     type: "bar",
     data: { labels, datasets: series.map(s => ({ label: s.label, data: s.data, backgroundColor: s.bg })) },
     options: {
-      responsive: true,
+      responsive: false,
+      maintainAspectRadio: false,
       plugins: {
         legend: { labels: { color: "#111" } },
         title: { display: true, text: title, color: "#111", font: { size: 18, weight: "bold" } },
@@ -546,9 +804,6 @@ function drawHorizontalBars(id, labels, data, title) {
   });
 }
 </script>
-
-
-
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
